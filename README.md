@@ -1,6 +1,8 @@
 # Geometric Deep Learning for Design Applications
 The present repository contains the software for training and utilizing the point cloud autoencoders in design applications. The architectures were developed in the framework of the ECOLE project (Horizon 2020 MSCA-ITN, Grant number 766186).
 
+---
+
 ## Pre-requisites
 The scripts of the repository were tested on Ubuntu 18.04 in a _conda_
 environment with Python 3.6.10 and the following standard libraries installed:
@@ -20,6 +22,47 @@ environment with Python 3.6.10 and the following standard libraries installed:
 For training the autoencoder, we adapted the scripts of the loss functions
 implemented in ([Achlioptas et al. 2018](https://github.com/optas/latent_3d_points))
 to our Python version and installed the library in the same conda environment.
+
+---
+## How to cite
+**3D Point Cloud Autoencoder**
+```
+@ARTICLE{Rios2021a,
+  author={Rios, Thiago and van Stein, Bas and Bäck, Thomas and Sendhoff, Bernhard and Menzel, Stefan},
+  journal={IEEE Transactions on Evolutionary Computation}, 
+  title={{Multi-Task Shape Optimization Using a 3D Point Cloud Autoencoder as Unified Representation}}, 
+  year={2021},
+  volume={},
+  number={},
+  pages={1-1},
+  doi={10.1109/TEVC.2021.3086308}}
+```
+
+**3D Point Cloud Variational Autoencoder**
+```
+@INPROCEEDINGS{Saha2020,
+  author    = {Saha, Sneha and Menzel, Stefan and Minku, Leandro L. and Yao, Xin and Sendhoff, Bernhard and Wollstadt, Patricia},
+  booktitle = {2020 IEEE Symposium Series on Computational Intelligence (SSCI)}, 
+  title     = {{Quantifying The Generative Capabilities Of Variational Autoencoders For 3D Car Point Clouds}}, 
+  year      = {2020},
+  pages     = {1469-1477},
+  doi       = {10.1109/SSCI47803.2020.9308513}
+}
+```
+
+**Feature Visualization for 3D Point Cloud Autoencoders**
+```
+@INPROCEEDINGS{Rios2020a,
+  author      = {Rios, Thiago and van Stein, Bas and Menzel, Stefan and Back, Thomas and Sendhoff, Bernhard and Wollstadt, Patricia},
+  booktitle   = {2020 International Joint Conference on Neural Networks (IJCNN)}, 
+  title       = {{Feature Visualization for 3D Point Cloud Autoencoders}}, 
+  year        = {2020},
+  pages       = {1-9},
+  doi         = {10.1109/IJCNN48605.2020.9207326}
+  }
+```
+
+---
 
 ## Software Modules
 The scripts contained in this repository are the following:
@@ -88,6 +131,8 @@ Running the script requires the implementation in
 [Achlioptas et al. 2018](https://github.com/optas/latent_3d_points) to be 
 installed in the same conda environment, if the Chamfer distance was used to
 train the target autoencoder.
+
+---
 
 ## How to use the scripts
 The application of the scripts is divided in three steps: **pre-processing**,
@@ -228,6 +273,8 @@ running the following command:
 python ae_parameters_extraction.py --N [point_cloud_size] --LR [latent_representation_size] --GPU [gpu_id] --VAE [True/False]
 ```
 
+---
+
 ## Example: Interpolation in the latent space
 For testing the trained autoencoders in an interpolation task, 
 open the terminal and type
@@ -240,6 +287,8 @@ based on the template used in the training scripts
 ([_pcae_training_, L#193](pcae_training.py#L193), and 
 [_vpcae_training_, L#148](vpcae_training.py#L148)). If the pattern is modified
 in the training files, it also has to be changed in the interpolation script.
+
+---
 
 ## Trained Network Parameters
 The directories _vanilla_pc_ae_parameters_ and _variational_pc_ae_parameters_
@@ -254,6 +303,8 @@ with random uniform probability distribution.
 The parameters stored in these directories allow further users test the architectures
 as implemented for the papers, without depending on the library available in 
 [Achlioptas et al. 2018](https://github.com/optas/latent_3d_points).
+
+---
 
 ## Licensing
 The software in this repository is licensed under the GPL 3.0. For more details on the license, please check [the license file.](LICENSE.md)
