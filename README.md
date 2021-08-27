@@ -24,8 +24,11 @@ implemented in ([Achlioptas et al. 2018](https://github.com/optas/latent_3d_poin
 to our Python version and installed the library in the same conda environment.
 
 ---
+
 ## How to cite
 **3D Point Cloud Autoencoder**
+
+Read our paper [here](https://ieeexplore.ieee.org/document/9446541)
 ```
 @ARTICLE{Rios2021a,
   author={Rios, Thiago and van Stein, Bas and Bäck, Thomas and Sendhoff, Bernhard and Menzel, Stefan},
@@ -39,6 +42,8 @@ to our Python version and installed the library in the same conda environment.
 ```
 
 **3D Point Cloud Variational Autoencoder**
+
+Read our paper [here](https://www.honda-ri.de/publications/publications/?pubid=4510)
 ```
 @INPROCEEDINGS{Saha2020,
   author    = {Saha, Sneha and Menzel, Stefan and Minku, Leandro L. and Yao, Xin and Sendhoff, Bernhard and Wollstadt, Patricia},
@@ -51,6 +56,8 @@ to our Python version and installed the library in the same conda environment.
 ```
 
 **Feature Visualization for 3D Point Cloud Autoencoders**
+
+Read our paper [here](https://www.honda-ri.de/publications/publications/?pubid=4354)
 ```
 @INPROCEEDINGS{Rios2020a,
   author      = {Rios, Thiago and van Stein, Bas and Menzel, Stefan and Back, Thomas and Sendhoff, Bernhard and Wollstadt, Patricia},
