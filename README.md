@@ -17,6 +17,11 @@ GDL4DesignApps is a software repository for training and applying geometric
  Skłodowska-Curie Actions (ITN-MSCA, Grant number 766186) and funded by 
  the Horizon2020 program.
 
+<img src="documentation/figures/01_grant_eu.png"
+     width="500"
+     alt="Markdown Monster icon"
+     style="float: center; margin-right: 50px;" />
+
 ---
 ## Software Pre-requisites
 We developed our software in a machine with Ubuntu 18.04 utilizing Python 
