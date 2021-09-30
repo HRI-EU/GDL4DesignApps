@@ -2,11 +2,13 @@
 #
 #  Custom package settings
 #
+#  Copyright (C)
+#  Honda Research Institute Europe GmbH
 #
 #
 
 
-name             = 'GDL4DesignApps'
+name             = 'ECOLE'
 
 version          = '1.0'
 

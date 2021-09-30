@@ -1,0 +1,26 @@
+confignet = {
+        'net_id': 'test_pc-ae',
+        'dataset': ['/hri/storage/visualdata/geometricdata/ShapeNetCore.v2.refined/shapenet_xyz_swm',],
+        'probsamp': [None,],
+        'shapelist': [3500,],
+        'proto_list': [],\
+        'class_layers': [25,],
+        'ffd_lmn': [16,6,6],
+        'data_size': [200],
+        'out_data':  None,
+        'training_batch_size': 50,
+        'test_batch_size': 50,
+        'pc_size': 6146,
+        'latent_layer': 128,
+        'noise_amp': 0.00,
+        'encoder_layers': [64, 128, 128, 256],
+        'decoder_layers': [256, 256],
+        'l_rate': 5e-4,
+        'epochs_max': 700,
+        'stop_training': 1e-06,
+        'frac_training': 0.9,
+        'autosave_rate': 10,
+        'alpha1': 1e3,
+        'alpha2': 1e-3,
+        'dpout': 1.0
+        }

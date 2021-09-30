@@ -12,7 +12,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# SCRIPT FOR TESTING THE FUNCTIONALITY OF THE AUTOENCODER ALGORITHMS
+# SCRIPT FOR TESTING THE FUNCTIONALITY OF THE SCRIPTS
 
 # Pre-requisites:
 #  - Python      3.6.10
@@ -27,85 +27,69 @@
 # Copyright (c)
 # Honda Research Institute Europe GmbH
 
-
-# Authors: Thiago Rios <thiago.rios@honda-ri.de>
+# Authors: Thiago Rios, Sneha Saha
 
 ## FAILURE CHECKS
-# FAIL 1: non-existing data set, autoencoder training
-echo "TEST 1a: autoencoder training, non-existing data set" >> log_uteest.dat
-echo "Standard output message:" >> log_uteest.dat
-echo "--- Script interrupted. Directory not found!" >> log_uteest.dat
-echo "--- Path to data set: NonExst" >> log_uteest.dat
-echo   >> log_uteest.dat
-python3 include/pcae_training.py --N 2048 --LR 128 --GPU -1 --i NonExst >> log_uteest.dat
-echo --------------------------------------------------------- >> log_uteest.dat
-echo  >> log_uteest.dat
+# TEST 1: Check if the library is installed
+dtest=$(pwd)
+cd ..
+echo -e "# TEST 1: Check if library was correctly installed" >> $dtest/log_utest.dat
+echo -e "Message in case of error: ModuleNotFoundError: No module names gdl4designapps" >> $dtest/log_utest.dat
+echo -e "Run test ..." >> $dtest/log_utest.dat
+python -c "import gdl4designapps" >> $dtest/log_utest.dat
+echo -e "Done!" >> $dtest/log_utest.dat
+echo -e "Finished test 1" >> $dtest/log_utest.dat
+echo " " >> $dtest/log_utest.dat
+echo " " >> $dtest/log_utest.dat
 
-echo "TEST 1b: variational autoencoder training, non-existing data set" >> log_uteest.dat
-echo "Standard output message:" >> log_uteest.dat
-echo "--- Script interrupted. Directory not found!" >> log_uteest.dat
-echo "--- Path to data set: NonExst" >> log_uteest.dat
-echo   >> log_uteest.dat
-python3 include/vpcae_training.py --N 2048 --LR 128 --GPU -1 --i NonExst  >> log_uteest.dat
-echo --------------------------------------------------------- >> log_uteest.dat
-echo   >> log_uteest.dat
-echo   >> log_uteest.dat
-echo   >> log_uteest.dat
+# TEST 2: Load individual components of the library
+echo -e "# TEST 2: Load individual components of the library" >> $dtest/log_utest.dat
+echo -e "Message in case of error: ModuleNotFoundError: No module names gdl4designapps" >> $dtest/log_utest.dat
+echo -e "Load preprocess_methods..." >> $dtest/log_utest.dat
+python -c "from gdl4designapps import preprocess_methods" >> $dtest/log_utest.dat
+echo -e "Done!" >> $dtest/log_utest.dat
+echo -e "Load preprocess.CAE2PC..."  >> $dtest/log_utest.dat
+python -c "from gdl4designapps.preprocess_methods import CAE2PC" >> $dtest/log_utest.dat
+echo -e "Done!" >> $dtest/log_utest.dat
+echo " " >> $dtest/log_utest.dat
 
-# FAIL 2: non-existing training directory, autoencoder testing
-echo "TEST 2a: reconstruction loss algorithm, training directory missing" >> log_uteest.dat
-echo "Standard output message:" >> log_uteest.dat
-echo "--- Directory Network_pcae_N0_LR0 does not exist!" >> log_uteest.dat
-echo   >> log_uteest.dat
-python3 include/evaluate_loss.py --N 0 --LR 0 --GPU -1 --i NonExst >> log_uteest.dat
-echo --------------------------------------------------------- >> log_uteest.dat
-echo  >> log_uteest.dat
+echo -e "Load designapps..." >> $dtest/log_utest.dat
+python -c "from gdl4designapps import designapps" >> $dtest/log_utest.dat
+echo -e "Done!" >> $dtest/log_utest.dat
+echo -e "Load designapps.Vis3D..." >> $dtest/log_utest.dat
+python -c "from gdl4designapps.designapps import Vis3D" >> $dtest/log_utest.dat
+echo -e "Done!" >> $dtest/log_utest.dat
+echo -e "Finished Test 2" >> $dtest/log_utest.dat
+echo " " >> $dtest/log_utest.dat
+echo " " >> $dtest/log_utest.dat
 
-echo "TEST 2b: point cloud generation, training directory missing" >> log_uteest.dat
-echo "Standard output message:" >> log_uteest.dat
-echo "--- Directory Network_pcae_N0_LR0 does not exist!" >> log_uteest.dat
-echo   >> log_uteest.dat
-python3 include/pointcloud_generator.py --N 0 --LR 0 --GPU -1 --i NonExst >> log_uteest.dat
-echo --------------------------------------------------------- >> log_uteest.dat
-echo  >> log_uteest.dat
+# TEST 3: Run basic scripts
+echo -e "# TEST 3: Running basic scripts" >> $dtest/log_utest.dat
+echo -e "Load data set" >> $dtest/log_utest.dat
+echo -e "Expected error: Path to data set not found" >> $dtest/log_utest.dat
+python -c "from gdl4designapps.preprocess_methods import CAE2PC; out = CAE2PC.pc_sampling('testdata', 2048)" >> $dtest/log_utest.dat
+echo -e "Done!" >> $dtest/log_utest.dat 
+echo " " >> $dtest/log_utest.dat
 
-echo "TEST 2c: variational autoencoder testing, training directory missing" >> log_uteest.dat
-echo "Standard output message:" >> log_uteest.dat
-echo "--- Directory Network_v_pcae_N0_LR0 does not exist!" >> log_uteest.dat
-echo   >> log_uteest.dat
-python3 include/evaluate_loss.py --N 0 --LR 0 --GPU -1 --i NonExst --VAE True >> log_uteest.dat
-echo --------------------------------------------------------- >> log_uteest.dat
-echo  >> log_uteest.dat
+echo -e "Generate PC-AE graph" >> $dtest/log_utest.dat
+echo -e "Expected output: Graph variables" >> $dtest/log_utest.dat
+python -c "from gdl4designapps.preprocess_methods import PC_AE; out = PC_AE.pcae([64, 128, 128, 256], 2048, 128, [256, 256]); print(out)" >> $dtest/log_utest.dat
+echo -e "Done!" >> $dtest/log_utest.dat
+echo " " >> $dtest/log_utest.dat
 
-echo "TEST 2d: point cloud generation, training directory missing" >> log_uteest.dat
-echo "Standard output message:" >> log_uteest.dat
-echo "--- Directory Network_v_pcae_N0_LR0 does not exist!" >> log_uteest.dat
-echo   >> log_uteest.dat
-python3 include/pointcloud_generator.py --N 0 --LR 0 --GPU -1 --i NonExst --VAE True >> log_uteest.dat
-echo --------------------------------------------------------- >> log_uteest.dat
-echo   >> log_uteest.dat
-echo   >> log_uteest.dat
-echo   >> log_uteest.dat
+echo -e "Start PC-AE training" >> $dtest/log_utest.dat
+echo -e "Expected error: configuration file not found!" >> $dtest/log_utest.dat
+python -c "from gdl4designapps.preprocess_methods import arch_training; out = arch_training.pc_ae_training('testconfig')" >> $dtest/log_utest.dat
+echo -e "Done!" >> $dtest/log_utest.dat
+echo " " >> $dtest/log_utest.dat
+echo " " >> $dtest/log_utest.dat
 
-# FAIL 3: non-existing training directory, extraction of weights
-echo "TEST 3a: autoencoder, weights extraction, training directory missing" >> log_uteest.dat
-echo "Standard output message:" >> log_uteest.dat
-echo "--- Directory Network_pcae_N0_LR0 does not exist!" >> log_uteest.dat
-echo   >> log_uteest.dat
-python3 include/ae_parameters_extraction.py --N 0 --LR 0 --GPU -1 >> log_uteest.dat
-echo --------------------------------------------------------- >> log_uteest.dat
-echo  >> log_uteest.dat
-
-echo "TEST 3b: variational autoencoder, weights extraction, training directory missing" >> log_uteest.dat
-echo "Standard output message:" >> log_uteest.dat
-echo "--- Directory Network_v_pcae_N0_LR0 does not exist!" >> log_uteest.dat
-echo   >> log_uteest.dat
-python3 include/ae_parameters_extraction.py --N 0 --LR 0 --GPU -1 --VAE True >> log_uteest.dat
-echo --------------------------------------------------------- >> log_uteest.dat
-echo   >> log_uteest.dat
-echo   >> log_uteest.dat
-echo   >> log_uteest.dat
+cd $dtest
 
 ## TEST CONCLUDED
+echo -e "unittest concuded!" >> log_utest.dat
+echo -e "If the tests returned no unexpected messages, the library was sucessfully installed and is ready for use." >> log_utest.dat
+
+echo -e "###### TEST CONCLUDED ######" >> log_utest.dat
 echo "###### TEST CONCLUDED ######"
 # EOF
