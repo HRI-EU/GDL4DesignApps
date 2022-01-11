@@ -52,15 +52,17 @@ The software in this repository is licensed under the GPL-3.0. For more details 
 
 The core methods of our software are implemented in the [`preprocess_methods.py`](include/preprocess_methods.py). The methods are divided in five classes:
 
-+ [CAE2PC](include/preprocess_methods.py#L98): This class contains the methods for sampling 3D point clouds from computer aided design/engineering (CAD/E) models, _e.g._ STL meshes.
++ [CAE2PC](gdl4designapps/preprocess_methods.py#L96): This class contains the methods for sampling 3D point clouds from computer aided design/engineering (CAD/E) models, _e.g._ STL meshes.
 
-+ [PC_AE](include/preprocess_methods.py#L583): This class contains the functions to generate the parameters and corresponding Tensorflow graph for training the 3D point cloud autoencoder utilized in our research.
++ [PC_AE](gdl4designapps/preprocess_methods.py#L581): This class contains the functions to generate the parameters and corresponding Tensorflow graph for training the 3D point cloud autoencoder utilized in our research.
 
-+ [PC_VAE](include/preprocess_methods.py#L850): This class contains the functions to generate the parameters and corresponding Tensorflow graph for training the 3D point cloud variational autoencoder utilized in our research.
++ [PC_VAE](gdl4designapps/preprocess_methods.py#L848): This class contains the functions to generate the parameters and corresponding Tensorflow graph for training the 3D point cloud variational autoencoder utilized in our research.
 
-+ [losses](include/preprocess_methods.py#L1201): Class that comprises the functions to calculate the mean-squared distance (MSD) and Kullback-Leibler divergence (KLD) on GPU for training the architectures. The Chamfer Distance (CD) is also available, however only for computation on CPU.
++ **New!** [Point2FFD](gdl4designapps/preprocess_methods.py#L1199): This class contains the functions to generate the parameters and corresponding Tensorflow graph for training Point2FFD, an architecture that generates polygonal meshes from input 3D point cloud representations.
 
-+ [arch_training](include/preprocess_methods.py#L1261): Class with the functions to train the deep-generative models. Examples of applications are available [here](examples).
++ [losses](gdl4designapps/preprocess_methods.py#L1629): Class that comprises the functions to calculate the mean-squared distance (MSD) and Kullback-Leibler divergence (KLD) on GPU for training the architectures. The Chamfer Distance (CD) is also available, however only for computation on CPU.
+
++ [arch_training](gdl4designapps/preprocess_methods.py#L726): Class with the functions to train the deep-generative models. Examples of applications are available [here](examples).
 
 ### Applications
 
@@ -139,6 +141,22 @@ Read our paper [here](https://www.honda-ri.de/publications/publications/?pubid=4
   doi         = {10.1109/IJCNN48605.2020.9207326}
   }
 ```
+
+**Point2FFD**
+Check out out paper [here](https://ieeexplore.ieee.org/abstract/document/9665853)
+```
+@INPROCEEDINGS{Rios2021b,
+  author={Rios, Thiago and Van Stein, Bas and Bäck, Thomas and Sendhoff, Bernhard and Menzel, Stefan},
+  booktitle={2021 International Conference on 3D Vision (3DV)}, 
+  title={{Point2FFD: Learning Shape Representations of Simulation-Ready 3D Models for Engineering Design Optimization}}, 
+  year={2021},
+  volume={},
+  number={},
+  pages={1024-1033},
+  doi={10.1109/3DV53792.2021.00110}
+  }
+```
+
 <img src="documentation/figures/01_grant_eu.png"
      width="500"
      alt="Markdown Monster icon"

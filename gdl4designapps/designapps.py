@@ -71,6 +71,7 @@ palette = ["#00334c", "#959da8", "#c8102e"]
 import tensorflow as tf
 
 # GDL4DesignApps
+# from gdl4designapps.preprocess_methods import CAE2PC
 from gdl4designapps.preprocess_methods import CAE2PC
 
 # ------------------------------------------------------------------------------
@@ -80,10 +81,27 @@ from gdl4designapps.preprocess_methods import CAE2PC
 # (Geometric) Data visualization
 class Vis3D:
     # Plot 3D point clouds
-    def pcplot(Splot, figname, pointsize=20, colorpoints='tan'):
+    def pcplot(Splot, figname, pointsize=20, colorpoints="#c8102e", 
+               cam_az=0, cam_el=0, wsize=(3440, 1440)):
+        ''' Function for visualizing 3D point clouds.
+
+        Input:
+          - Splot: Array with the Cartesian coordinates of the 3D point cloud.
+          Type: <array, (N,3)>
+          - figname: Name of the file to save the figure. Type: String
+          - pointsize (standard value: 20): Size of the spheres that represent
+          the point clouds. Type <int>
+          - colorpoints (standard value: "#c8102e"): Color of the spheres.
+          - cam_az (standard value: 0): Camera azimuthal position.
+          Type: <float (1)>
+          - cam_el (standard value: 0): Camera elevation. Type: <float (1)>
+          - wsize (standard value (3440, 1440)): Size of the window in pixels
+          to plot the image. Type: <tuple (int, int)>
+
+        Output:
+          - None. The image is directly saved in the specified path.
         '''
-        '''
-        pltv = pv.Plotter(off_screen=True, window_size=(3440, 1440))
+        pltv = pv.Plotter(off_screen=True, window_size=wsize)
         pltv.set_background("white")
         pltv.add_mesh(Splot, point_size=pointsize, style="points",
                       render_points_as_spheres=True,
@@ -91,15 +109,39 @@ class Vis3D:
         light = pv.Light(position=(1, 0, 0), light_type='scene light')
         pltv.add_light(light)
         pltv.view_isometric()
+        pltv.camera.azimuth= cam_az
+        pltv.camera.elevation= cam_el
         pltv.show(screenshot=figname)
         pltv.close()
         return()
     
     # Plot color maps onto 3D point clouds
-    def pccmap(Splot, cscalar, figname, pointsize=20, vlim=[-1,1]):
+    def pccmap(Splot, cscalar, figname, pointsize=20, vlim=[-1,1],
+               cam_az=0, cam_el=0, wsize=(3440, 1440)):
+        ''' Function for visualizing 3D point clouds with color maps.
+
+        Input:
+          - Splot: Array with the Cartesian coordinates of the 3D point cloud.
+          Type: <array, (N,3)>
+          - cscalar: Array with the scalar values associated with each point.
+          Type: <array, (N)>
+          - figname: Name of the file to save the figure. Type: String
+          - pointsize (standard value: 20): Size of the spheres that represent
+          the point clouds. Type <int>
+          - vlim (standard value: [-1,1]): Minimum and maximum values of the
+          color scale. Type: <list, [min, max]>
+          - colorpoints (standard value: "#c8102e"): Color of the spheres.
+          - cam_az (standard value: 0): Camera azimuthal position.
+          Type: <float (1)>
+          - cam_el (standard value: 0): Camera elevation. Type: <float (1)>
+          - wsize (standard value (3440, 1440)): Size of the window in pixels
+          to plot the image. Type: <tuple (int, int)>
+
+        Output:
+          - None. The image is directly saved in the specified path. 
         '''
-        '''
-        pltv = pv.Plotter(off_screen=True, window_size=(3440, 1440))
+
+        pltv = pv.Plotter(off_screen=True, window_size=wsize)
         pv.set_plot_theme("document")
         pltv.set_background("white")
         light = pv.Light(position=(1, 0, 0), light_type='scene light')
@@ -112,17 +154,44 @@ class Vis3D:
                             shadow=True, n_labels=4,
                             color='black', italic=True, fmt="%.1E",
                             font_family="times")
-        pltv.view_isometric()
+        pltv.view_yz()
+        pltv.camera.azimuth= cam_az
+        pltv.camera.elevation= cam_el
         pltv.show(screenshot=figname)
         pltv.close()
         return()
 
     # Comparison between point clouds
-    def pccomp(Sref, Scomp, figname, pointsize=20, cdata=None, vlim=[0,1]):
+    def pccomp(Sref, Scomp, figname, pointsize=20, cscalar=None, vlim=[0,1],
+               cam_az=0, cam_el=0, wsize=(3440, 1440)):
+        ''' Function for comparing two point clouds.
+
+        Input:
+          - Sref: Array with the Cartesian coordinates of the reference 
+          3D point cloud.
+          Type: <array, (N,3)>
+          - Scomp: Array with the Cartesian coordinates of the target 3D point cloud.
+          Type: <array, (N,3)>
+          - cscalar: Array with the scalar values associated with each point.
+          Type: <array, (N)>
+          - figname: Name of the file to save the figure. Type: String
+          - pointsize (standard value: 20): Size of the spheres that represent
+          the point clouds. Type <int>
+          - vlim (standard value: [-1,1]): Minimum and maximum values of the
+          color scale. Type: <list, [min, max]>
+          - colorpoints (standard value: "#c8102e"): Color of the spheres.
+          - cam_az (standard value: 0): Camera azimuthal position.
+          Type: <float (1)>
+          - cam_el (standard value: 0): Camera elevation. Type: <float (1)>
+          - wsize (standard value (3440, 1440)): Size of the window in pixels
+          to plot the image. Type: <tuple (int, int)>
+
+        Output:
+          - None. The image is directly saved in the specified path. 
         '''
-        '''
+
         pltv = pv.Plotter(off_screen=True, 
-                          window_size=(3440, 1440))
+                          window_size=wsize)
         pv.set_plot_theme("document")
         pltv.set_background("white")
         light = pv.Light(position=(1, 0, 0), light_type='scene light')
@@ -132,11 +201,12 @@ class Vis3D:
                       render_points_as_spheres=True,
                       lighting=True, color="#00334c")
         Sref_yspan = np.max(Sref[:,1]) - np.min(Sref[:,1])
-        if not type(cdata)==type(None):
+        if not type(cscalar)==type(None):
             pltv.add_mesh(Scomp+[0,2*Sref_yspan,0], 
                           point_size=pointsize, style="points", 
                           render_points_as_spheres=True,
-                          lighting=True, scalars=cdata.flatten(), cmap=cm_custm,
+                          lighting=True, scalars=cscalar.flatten(),
+                          cmap=cm_custm,
                           show_scalar_bar=True, clim=vlim)
             pltv.add_scalar_bar(title_font_size=48, label_font_size=40,
                             shadow=True, n_labels=4,
@@ -148,54 +218,11 @@ class Vis3D:
                       render_points_as_spheres=True,
                       lighting=True, color="#c8102e")
         
-        pltv.view_isometric()
+        pltv.view_yz()
+        pltv.camera.azimuth= cam_az
+        pltv.camera.elevation= cam_el
         pltv.show(screenshot=figname)
         pltv.close()
-        return()
-
-        d=0
-
-    # Plot meshes
-    def msplot(mesh_path, figname, cmesh='tan'):
-        '''
-        '''
-        pltv = pv.Plotter(off_screen=True, window_size=(3440, 1440))
-        pltv.set_background("white")
-        pltv.add_mesh(pv.PolyData(mesh_path), lighting=True, show_edges=True, 
-                         color=cmesh)
-        light = pv.Light(position=(1, 0, 0), light_type='scene light')
-        pltv.add_light(light)
-        pltv.view_isometric()
-        pltv.show(screenshot=figname)
-        pltv.close()
-        return()
-    
-    # Plot color maps onto meshes
-    def mscmap():
-        ''' 
-        '''
-    
-    # Losses histogram
-    def hist_losses(dframe, fname, fsize=(4,3)):
-        _, axs = plt.subplots(figsize=fsize, dpi=300)
-        f=sns.histplot(dframe, x="chamfer_distance",
-                    hue="test_set",
-                    kde=True,
-                    stat='percent', multiple="dodge", shrink=.8,
-                    bins=20,
-                    palette=sns.color_palette(list(np.array(palette)[[0,2]]), 2)
-                    )
-        plt.tight_layout()
-        axs.legend(["Test set", "Training set"], handlelength=1.0,
-                    handletextpad=0.2, loc="center left", 
-                    bbox_to_anchor=(0.675, 0.9), fontsize=10)
-        plt.xlabel("Camfer Distance")
-        plt.ylabel("Percentage")
-        if fname[-3:] == "pdf":
-            plt.savefig(fname, dpi=300)
-        else:
-            plt.savefig(fname+".pdf", dpi=300)
-        plt.close()
         return()
 
 # ------------------------------------------------------------------------------
@@ -205,16 +232,132 @@ class Vis3D:
 # Algorithms for generating latent representations, 3D point clouds and 
 # visualizing network features
 class DesignApps:
-    # Calculate the latent representations of 3D point clouds
-    def pointcloud_to_Z(config_path, pc_batch, GPUid=-1):
-        '''Function to compress 3D point clouds to latent representations
-        using a trained archtiecture.
+    # Function to import the network graph
+    def import_net_graph(config_path, GPUid):
+        ''' Function to load graph nodes and start a tensorflow session
+        that can be used for GDL applications with the trained architectures.
 
         Input:
           - config_path: Path to the dictionary (.py) with the settings for
           training the autoencoder. Type: <string>
+          - GPUid (default=-1): ID of the GPU that will be used. If no GPU is
+          avaliable, the value '-1' allows to train the model on CPU.
+
+        Output:
+          - sess: Tensorflow session that should be used
+          - S_in: Tensorflow placeholder for the input point clouds
+          - Z: Tensor of the latent representation. Type: <tensor, (-1, Lz, 1)>
+          - S_out: Tensor with the output point clouds. 
+          Type: <tensor, (-1,pc_size,3)>
+          - feat_layer: Tensor with the set of feature values (activations) 
+          of the processed point clouds obtained at the last convolutional 
+          layer. Type: <tensor, (-1, pc_size, n_features)>
+          - pc_size: Size of the output point cloud. Type int
+          - dpout: Tensorflow placeholder for the dropout ratio utilized in the PC-VAE. Type <tensor ()>
+          - gamma_n: Tensorflow placeholder for enabling or disabling the 
+          Gaussian noise in the latent layer. Type <tensor ()>.
+          - latt_def: Tensor of deformed control points that were utilized to
+          generate the output shape. Type <tensor (-1,n_control_points,3)>
+          - flags: List with arrays that indicate the architecture that is 
+          utilized. Type <list, [Boolean (VAE), Boolean (Point2FFD)]>
+        '''
+        ## Allocate GPU
+        os.putenv('CUDA_VISIBLE_DEVICES','{}'.format(GPUid))
+        ast.literal_eval
+        
+        ## Read configuration dictionary
+        if os.path.exists(config_path):
+            os.system("cp {} configdict.py".format(config_path))
+            from configdict import confignet as config
+        else:
+            print("ERROR! Configuration file not found!")
+            print("File: {}".format(config_path))
+            return()
+        
+        ## Network output directory
+        if type(config["out_data"]) == type(None):
+            out_dir = "."
+        else:
+            out_dir = str(config["out_data"])
+        # Network directory
+        net_dir = "{}/{}".format(out_dir, str(config["net_id"]))
+
+        ## Load the architecture
+        flag_vae = False
+        flag_p2ffd = False
+        dpout = None
+        gamma_n = None
+        latt_def = None
+        # In case the network is PC-AE
+        try:
+            # - Import Graph at latest state (after training)
+            TFmetaFile = str.format("{}/pcae.meta", net_dir)
+            TFDirectory = str.format("{}/", net_dir)
+            # import graph data
+            new_saver = tf.train.import_meta_graph(TFmetaFile,
+                                                   clear_devices=True)
+        except:
+            try:
+                # In case the network is PC-VAE
+                # - Import Graph at latest state (after training)
+                TFmetaFile = str.format("{}/pcvae.meta", net_dir)
+                TFDirectory = str.format("{}/", net_dir)
+                # import graph data
+                new_saver = tf.train.import_meta_graph(TFmetaFile,
+                                                       clear_devices=True)
+                flag_vae = True
+            except:
+                # In case the network is Point2FFD
+                # - Import Graph at latest state (after training)
+                TFmetaFile = str.format("{}/p2ffd.meta", net_dir)
+                TFDirectory = str.format("{}/", net_dir)
+                # import graph data
+                new_saver = tf.train.import_meta_graph(TFmetaFile,
+                                                       clear_devices=True)
+                dpout=None
+                flag_p2ffd = True
+        
+        sess=tf.Session()
+        new_saver.restore(sess, tf.train.latest_checkpoint(TFDirectory))
+        graph = tf.get_default_graph()
+        # Import network layers
+        # Input
+        S_in = graph.get_tensor_by_name("S_in:0")
+        # - Latent representation
+        Z = graph.get_tensor_by_name("Z:0")
+        S_out = graph.get_tensor_by_name("S_out:0")
+        pc_size = S_out.shape[1]
+        # Droput (PC-VAE)
+        if flag_vae: dpout = graph.get_tensor_by_name("do_rate:0")
+        if flag_p2ffd:
+            gamma_n = graph.get_tensor_by_name("gamma_n:0")
+            latt_def = graph.get_tensor_by_name("Vd:0")
+
+        layer_index = len(list(config["encoder_layers"]))
+        feat_layer = graph.get_tensor_by_name(
+                                 str.format("enclayer_{}:0", layer_index))
+
+        flags = [flag_vae, flag_p2ffd]
+
+        return(sess, S_in, Z, S_out, feat_layer, pc_size, dpout,
+               gamma_n, latt_def, flags)
+
+    # Calculate the latent representations of 3D point clouds
+    def pointcloud_to_Z(config_path, sess, Sin, Z, pc_batch, flags,
+                        dpout=None, gamma_n=None, GPUid=-1):
+        '''Function to compress 3D point clouds to latent representations
+        using a trained architecture.
+
+        Input:
+          - config_path: Path to the dictionary (.py) with the settings for
+          training the autoencoder. Type: <string>
+          - sess: Tensorflow session that should be used
+          - Sin: Tensorflow placeholder for the input point clouds
+          - Z: Tensor of the latent representation. Type: <tensor, (-1, Lz, 1)>
           - pc_batch: Batch with 3D point clouds for calculating the latent 
           representations. Type: <array (-1,N,3)>
+          - flags: List with arrays that indicate the architecture that is 
+          utilized. Type <list, [Boolean (VAE), Boolean (Point2FFD)]>
           - GPUid (default=-1): ID of the GPU that will be used. If no GPU is
           avaliable, the value '-1' allows to train the model on CPU.
 
@@ -256,84 +399,61 @@ class DesignApps:
         # Number of shapes
         nshapes = data_set.shape[0]
 
-        ## Load the architecture
-        flag_vae = False
-        # In case the network is PC-AE
-        try:
-            # - Import Graph at latest state (after training)
-            TFmetaFile = str.format("{}/pcae.meta", net_dir)
-            TFDirectory = str.format("{}/", net_dir)
-            # import graph data
-            new_saver = tf.train.import_meta_graph(TFmetaFile,
-                                                   clear_devices=True)
-        # In case the network is PC-VAE
-        except:
-            flag_vae = True
-            # - Import Graph at latest state (after training)
-            TFmetaFile = str.format("{}/pcvae.meta", net_dir)
-            TFDirectory = str.format("{}/", net_dir)
-            # import graph data
-            new_saver = tf.train.import_meta_graph(TFmetaFile,
-                                                   clear_devices=True)
-
-        ## Create directory to save the files
-        output_test = str.format("{}/network_verification", net_dir)
-        if not os.path.exists(output_test):
-            os.system(str.format("mkdir {}", output_test))
-
-        ## Evaluation of the shapes
-        with tf.Session() as sess:
-            new_saver.restore(sess, tf.train.latest_checkpoint(TFDirectory))
-            graph = tf.get_default_graph()
-            # Import network layers
-            # - Input
-            x = graph.get_tensor_by_name("S_in:0")
-            # - Latent Representation
-            Z = graph.get_tensor_by_name("Z:0")
-            Z_size = Z.shape[1]
-            # Droput (PC-VAE)
-            if flag_vae: dpout = graph.get_tensor_by_name("do_rate:0")
-
-            ## Calculate reconstruction losses and latent representations
-            print("\n")
-            # Array of latent representations
-            z_batch = np.zeros((data_set.shape[0], Z_size, 1))
-            for i in range(nshapes):
-                print('Shape {} of {}'.format(i+1, nshapes), end="\r")
-                xin = np.reshape(data_set[i,:,:], (1, -1, 3))
-                # Calculate the latent representation and point cloud 
-                # reconstruction
-                if flag_vae:
-                    z_batch[i,:,:] = sess.run(Z,\
-                        feed_dict={x: xin, dpout: 1.0})[0,:,:]
+        # Architecture flags
+        flag_vae, flag_p2ffd = flags
+        
+        ## Calculate reconstruction losses and latent representations
+        print("\n")
+        # Array of latent representations
+        z_batch = np.zeros((data_set.shape[0], Z.shape[1], 1))
+        for i in range(nshapes):
+            print('Shape {} of {}'.format(i+1, nshapes), end="\r")
+            xin = np.reshape(data_set[i,:,:], (1, -1, 3))
+            # Calculate the latent representation and point cloud 
+            # reconstruction
+            if flag_vae:
+                z_batch[i,:,:] = sess.run(Z,\
+                    feed_dict={Sin: xin, dpout: 1.0})[0,:,:]
+            else:
+                if flag_p2ffd:
+                    z_batch[i,:,:] = sess.run(Z, feed_dict={
+                                                 Sin: xin, gamma_n:0})[0,:,:]
                 else:
-                    z_batch[i,:,:] = sess.run(Z, feed_dict={x: xin})[0,:,:]
-            sess.close()
+                    z_batch[i,:,:] = sess.run(Z, feed_dict={Sin: xin})[0,:,:]
 
         return(z_batch)
     
     # Generate 3D point clouds from latent representations
-    def Z_to_pointcloud(config_path, z_batch, GPUid=-1):
+    def Z_to_pointcloud(config_path, sess, S_out, Z, z_batch, flags,
+                        dpout=None, gamma_n=None, latt_def=None, GPUid=-1):
         '''Function to generate 3D point clouds from a batch of latent 
         representations.
 
         Input:
           - config_path: Path to the dictionary (.py) with the settings for
           training the autoencoder. Type: <string>
+          - sess: Tensorflow session that should be used
+          - S_out: Tensor with the output point clouds. 
+          Type: <tensor, (-1,pc_size,3)>
+          - Z: Tensor of the latent representation. Type: <tensor, (-1, Lz, 1)>
           - z_batch: Array with the corresponding batch of latent 
           representations calculated for the input pc_batch.
           Type: <array (-1,Lz,1)>
+          - flags: List with arrays that indicate the architecture that is 
+          utilized. Type <list, [Boolean (VAE), Boolean (Point2FFD)]>
           - GPUid (default=-1): ID of the GPU that will be used. If no GPU is
           avaliable, the value '-1' allows to train the model on CPU.
 
         Output:
           - pc_batch: Batch with 3D point clouds for calculating the latent 
           representations. Type: <array (-1,N,3)>
+          - V_batch: Batch of deformed control points that were utilized to
+          generate the output shape. Type <array (-1,n_control_points,3)>
         '''
 
         ## Allocate GPU
         os.putenv('CUDA_VISIBLE_DEVICES','{}'.format(GPUid))
-        
+
         ## Read configuration dictionary
         if os.path.exists(config_path):
             os.system("cp {} configdict.py".format(config_path))
@@ -361,103 +481,69 @@ class DesignApps:
         
         # Number of shapes
         nshapes = z_batch.shape[0]
+        # Point cloud size
+        pc_size = S_out.shape[1]
 
-        ## Load the architecture
-        flag_vae = False
-        # In case the network is PC-AE
-        try:
-            # - Import Graph at latest state (after training)
-            TFmetaFile = str.format("{}/pcae.meta", net_dir)
-            TFDirectory = str.format("{}/", net_dir)
-            # import graph data
-            new_saver = tf.train.import_meta_graph(TFmetaFile,
-                                                   clear_devices=True)
-        # In case the network is PC-VAE
-        except:
-            flag_vae = True
-            # - Import Graph at latest state (after training)
-            TFmetaFile = str.format("{}/pcvae.meta", net_dir)
-            TFDirectory = str.format("{}/", net_dir)
-            # import graph data
-            new_saver = tf.train.import_meta_graph(TFmetaFile,
-                                                   clear_devices=True)
+        # Architecture flags
+        flag_vae, flag_p2ffd = flags
 
-        ## Create directory to save the files
-        output_test = str.format("{}/network_verification", net_dir)
-        if not os.path.exists(output_test):
-            os.system(str.format("mkdir {}", output_test))
+        ## Calculate reconstruction losses and latent representations
+        print("\n")
+        # Batch of point clouds
+        pc_batch = np.zeros((z_batch.shape[0], pc_size, 3))
+        # Batch of control points (Point2FFD)
+        if flag_p2ffd:
+            V_batch = np.zeros((z_batch.shape[0], latt_def.shape[1], 3))
+        else:
+            V_batch = np.zeros((z_batch.shape[0], 1, 3))
 
-        ## Evaluation of the shapes
-        with tf.Session() as sess:
-            new_saver.restore(sess, tf.train.latest_checkpoint(TFDirectory))
-            graph = tf.get_default_graph()
-            # Import network layers
-            # - Latent representation
-            Z = graph.get_tensor_by_name("Z:0")
-            S_out = graph.get_tensor_by_name("S_out:0")
-            pc_size = S_out.shape[1]
-            # Droput (PC-VAE)
-            if flag_vae: dpout = graph.get_tensor_by_name("do_rate:0")
-
-            ## Calculate reconstruction losses and latent representations
-            print("\n")
-            pc_batch = np.zeros((z_batch.shape[0], pc_size, 3))
-            for i in range(nshapes):
-                print('Shape {} of {}'.format(i+1, nshapes), end="\r")
-                zin = np.reshape(z_batch[i,:,:], (1, -1, 1))
-                if flag_vae:
-                    pc_batch[i,:,:] = sess.run(S_out,\
-                        feed_dict={Z: zin, dpout: 1.0})[0,:,:]
+        for i in range(nshapes):
+            print('Shape {} of {}'.format(i+1, nshapes), end="\r")
+            zin = np.reshape(z_batch[i,:,:], (1, -1, 1))
+            if flag_vae:
+                pc_batch[i,:,:] = sess.run(S_out,\
+                    feed_dict={Z: zin, dpout: 1.0})[0,:,:]
+            else:
+                if flag_p2ffd:
+                    pc, latt= sess.run([S_out, latt_def],\
+                                        feed_dict={Z: zin, gamma_n: 0.0})
+                    pc_batch[i,:,:] = pc[0,:,:]
+                    V_batch[i,:,:] = latt[0,:,:]
                 else:
-                    pc_batch[i,:,:] = sess.run(S_out, feed_dict={Z: zin})[0,:,:]
-            sess.close()
+                    pc_batch[i,:,:] = sess.run(S_out, feed_dict={
+                                                         Z: zin})[0,:,:]
 
         # Load normalization limits
         normlim = np.load("{}/norm_inp_limits.npy".format(net_dir))
         pc_batch = CAE2PC.data_set_norm(pc_batch,
                                              inp_lim=np.array([0.1, 0.9]),
                                             out_lim=normlim)[0]
+        V_batch = CAE2PC.data_set_norm(V_batch,
+                                            inp_lim=np.array([0.1, 0.9]),
+                                            out_lim=normlim)[0]
         # Output shapes
-        return(pc_batch)
-
-    # 3D Point cloud reconstruction
-    def pointcloud_reconstruct(config_path, pc_batch, GPUid=-1):
-        '''Function to compress 3D point clouds to latent representations
-        using a trained archtiecture.
-
-        Input:
-          - config_path: Path to the dictionary (.py) with the settings for
-          training the autoencoder. Type: <string>
-          - pc_batch: Batch with 3D point clouds for calculating the latent 
-          representations. Type: <array (-1,N,3)>
-          - GPUid (default=-1): ID of the GPU that will be used. If no GPU is
-          avaliable, the value '-1' allows to train the model on CPU.
-
-        Output:
-          - pc_rec: Batch with 3D point clouds for calculating the latent 
-          representations. Type: <array (-1,N,3)>
-        '''
-        # Calculate the latent representations
-        z_batch = DesignApps.pointcloud_to_Z(config_path, pc_batch, GPUid=GPUid)
-        # Generate 3D point clouds based on the calculated representations
-        pc_rec = DesignApps.Z_to_pointcloud(config_path, z_batch, GPUid=-1)
-        
-        # Return reconstructed point clouds
-        return(pc_rec)
+        return(pc_batch, V_batch)
 
     # Feature Visualization
-    def featvis(config_path, pc_batch, GPUid=-1, plot=True):
+    def featvis(config_path, sess, S_in, feat_layer, pc_batch, flags, 
+                dpout=None, gamma_n=None, GPUid=-1, plot=True):
         ''' Function for visualizing the features learned by the PC-AE in the
         last convolutional layer (prior to max-pooling).
 
         Input:
           - config_path: Path to the dictionary (.py) with the settings for
           training the autoencoder. Type: <string>
+          - sess: Tensorflow session that should be used
+          - S_in: Tensorflow placeholder for the input point clouds
+          - feat_layer: Tensor of the latent representation. 
+          Type: <tensor, (-1, Lz, 1)>
           - pc_batch: Batch with 3D point clouds for calculating the latent 
           representations. Type: <array (-1,N,3)>
+          - flags: List with arrays that indicate the architecture that is 
+          utilized. Type <list, [Boolean (VAE), Boolean (Point2FFD)]>
           - GPUid (default=-1): ID of the GPU that will be used. If no GPU is
           avaliable, the value '-1' allows to train the model on CPU.
-          - plot (default=True): Option that enables plot and sotre the
+          - plot (default=True): Option that enables plot and store the
           visualizations as .png images. Type: Boolean
 
         Output:
@@ -505,69 +591,33 @@ class DesignApps:
         # Number of shapes
         nshapes = data_set.shape[0]
 
-        ## Load the architecture
-        flag_vae = False
-        # In case the network is PC-AE
-        try:
-            # - Import Graph at latest state (after training)
-            TFmetaFile = str.format("{}/pcae.meta", net_dir)
-            TFDirectory = str.format("{}/", net_dir)
-            # import graph data
-            new_saver = tf.train.import_meta_graph(TFmetaFile,
-                                                   clear_devices=True)
-        # In case the network is PC-VAE
-        except:
-            flag_vae = True
-            # - Import Graph at latest state (after training)
-            TFmetaFile = str.format("{}/pcvae.meta", net_dir)
-            TFDirectory = str.format("{}/", net_dir)
-            # import graph data
-            new_saver = tf.train.import_meta_graph(TFmetaFile,
-                                                   clear_devices=True)
+        # Architecture flags
+        flag_vae, flag_p2ffd = flags
 
         ## Create directory to save the files
         output_test = str.format("{}/network_verification", net_dir)
         if not os.path.exists(output_test):
             os.system(str.format("mkdir {}", output_test))
-
-        ## Evaluation of the shapes
-        with tf.Session() as sess:
-            new_saver.restore(sess, tf.train.latest_checkpoint(TFDirectory))
-            graph = tf.get_default_graph()
-            # Import network layers
-            # - Input
-            x = graph.get_tensor_by_name("S_in:0")
-            # - Last convolutional layer (before max pooling)
-            layer_index = len(list(config["encoder_layers"]))
-
-            feat_layer = graph.get_tensor_by_name(
-                                     str.format("enclayer_{}:0", layer_index))
-            # Droput (PC-VAE)
-            if flag_vae: dpout = graph.get_tensor_by_name("do_rate:0")
-
-            ## Calculate reconstruction losses and latent representations
-            print("\n")
-            # Array of latent representations
-            feat = np.zeros((data_set.shape[0], feat_layer.shape[1], 
-                                                    feat_layer.shape[2]))
-            for i in range(nshapes):
-                print('Shape {} of {}'.format(i+1, nshapes), end="\r")
-                xin = np.reshape(data_set[i,:,:], (1, -1, 3))
-                # Calculate the latent representation and point cloud 
-                # reconstruction
-                if flag_vae:
-                    feat[i,:,:] = sess.run(feat_layer,\
-                        feed_dict={x: xin, dpout: 1.0})[0,:,:]
+            
+        ## Calculate reconstruction losses and latent representations
+        print("\n")
+        # Array of latent representations
+        f_batch = np.zeros((data_set.shape[0], feat_layer.shape[1], 
+                                               feat_layer.shape[2]))
+        for i in range(nshapes):
+            print('Shape {} of {}'.format(i+1, nshapes), end="\r")
+            xin = np.reshape(data_set[i,:,:], (1, -1, 3))
+            # Calculate the latent representation and point cloud 
+            # reconstruction
+            if flag_vae:
+                f_batch[i,:,:] = sess.run(feat_layer,\
+                    feed_dict={S_in: xin, dpout: 1.0})[0,:,:]
+            else:
+                if flag_p2ffd:
+                    f_batch[i,:,:] = sess.run(feat_layer, 
+                                              feed_dict={S_in: xin, 
+                                                  gamma_n:0})[0,:,:]
                 else:
-                    feat[i,:,:] = sess.run(feat_layer, 
-                                                 feed_dict={x: xin})[0,:,:]
-
-                if plot:
-                    for j in range(feat.shape[2]):
-                        filename = "{}/pc_{:03}_feat{:03}.png".format(
-                                                          output_test, i, j)
-                        limf = [np.min(feat[i,:,j]), np.max(feat[i,:,j])]
-                        Vis3D.pccmap(data_set[i,:,:], feat[i,:,j], 
-                                 filename, vlim=limf)
-            sess.close()
-        return(feat)
+                    f_batch[i,:,:] = sess.run(feat_layer, 
+                                              feed_dict={S_in: xin})[0,:,:]
+        return(f_batch)
