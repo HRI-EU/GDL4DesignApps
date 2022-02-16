@@ -202,11 +202,11 @@ class CAE2PC:
         Input parameters:
           - data_set_path: path to the directory with shapes to be sampled
           - ref_mesh_path: path to the reference mesh, which will be shrunk
-          - out_dir:       prefix of the output directory name
-          - swm_config:    dictionary with the configuration to perform the shrink-
-          wrapping sampling {'shrink': shrinking steps, 'alpha': alpha, 
+          - out_dir: prefix of the output directory name
+          - swm_config: dictionary with the configuration to perform the
+          shrink-wrapping sampling {'shrink': shrinking steps, 'alpha': alpha, 
           'smooth': smoothing steps}
-          - stl:           option to output the shrink-wrapped stl meshes
+          - stl: option to output the shrink-wrapped stl meshes
         
         Output parameters: None
           - The script saves the files directly to the specified directories.
@@ -367,7 +367,7 @@ class CAE2PC:
 
         Input parameters:
           - data_set_path: path to the directory with shapes to be sampled
-          - out_dir:       prefix of the output directory name
+          - out_dir: prefix of the output directory name
 
         Output parameters: None
           - The script saves the files directly to the specified directories.
@@ -407,7 +407,8 @@ class CAE2PC:
         ''' Point Cloud sampling algorithm
 
         Input:
-          - dataset_path: path to the directory containing point clouds. Type: str
+          - dataset_path: path to the directory containing point clouds. 
+          Type: str
           - n_points: size of the point cloud. Type: int
           - n_pclouds: number of point clouds to load. Three types of input are
           possible:
