@@ -1722,6 +1722,46 @@ class losses:
 
         return(loss_comb)
 
+    # Content and style classifier loss of the Split-AE
+    def classifier_losses(S_in, S_out, pcs_t, ind_t, class_prob_s, class_label_c,class_prob_c):
+        ''' Mean squared distance (MSD) measured for a batch of organized
+        3D point clouds and weighted by the selection probability of the
+        templates (Split-AE).
+
+        Input:
+          - S_in: Input placeholder of the PC-VAE. Type: <tensor (-1,pc_size,3)>
+          - S_out: Reconstructed  point cloud. Type <tensor (-1, pc_size, 3)>
+          - pcs_t: 3D Point clouds that represent the mesh templates.
+          Type <tensor (-1,pc_size,3)
+          - ind_t: Indices of the selected template per input shape.
+          Type <tensor (-1)>
+          - class_prob_s: Selection probability of each 5 template for each input
+          shape. Type <tensor (-1,number_of_templates)>
+          - class_label_c: Class labels of the input shapes. Type <tensor (-1,number_of_templates)>
+
+        Output:
+          - loss: Tensor with the mean MSD for the input batch of point clouds.
+          Type: <tensor (1)>
+        '''
+
+        loss_classifier_style = tf.reduce_sum(
+            tf.scan(
+                lambda a, z: tf.reduce_mean(
+                    (class_prob_s[:, z] / tf.reduce_sum \
+                        (class_prob_s, axis=1)
+                     ) * tf.reduce_mean(tf.norm((S_in - pcs_t[z, :, :]), axis=2), axis=1)), ind_t, \
+                initializer=tf.zeros(()))
+        )
+        loss_classifier_content = tf.reduce_mean(
+            tf.nn.softmax_cross_entropy_with_logits(labels=label_y_content, logits=class_label_c),
+            name='loss_ce_content')
+        style_loss = tf.math.scalar_mul(beta, loss_classifier_style)
+        content_loss = tf.math.scalar_mul(gamma, loss_classifier_content)
+
+        loss_comb = style_loss + content_loss
+
+        return (loss_comb)
+
 # Class of algorithms for training the deep-generative models
 class arch_training:
     # Data set loader
@@ -2500,6 +2540,9 @@ class arch_training:
         class_sizes.append(V0.shape[0])
         # Decoder
         decoder_sizes = list(config["decoder_layers"])
+
+        # Classifier
+        class_sizes = config["class_layers"]
         decoder_sizes.append(V0.shape[1])
 
         # Generate graph
@@ -2664,6 +2707,252 @@ class arch_training:
         # Return error message
         return('FLAG_ERROR', False)
 
+    # Training splitae
+    def splitae_training(splitae_config, GPUid=-1):
+        ''' Function for training the PC-VAE on CPU/GPU with MSD
+
+        Input:
+          - pcae_config: Path to the dictionary (.py) with the settings for
+          training the autoencoder. Type: <string>
+          - GPUid (default=-1): ID of the GPU that will be used. If no GPU is
+          avaliable, the value '-1' allows to train the model on CPU.
+
+        Output:
+          - (FLAG_ERROR, True), if the Function was interrupted by an error
+          - (FLAG_ERROR, False), if the Function finished without errors.
+        '''
+
+        ## Allocate GPU/CPU
+        os.putenv('CUDA_VISIBLE_DEVICES', '{}'.format(GPUid))
+
+        ## Read configuration dictionary
+        if os.path.exists(splitae_config):
+            os.system("cp {} configdict.py".format(splitae_config))
+            from configdict import confignet as config
+        else:
+            print("ERROR! Configuration file not found!")
+            print("File: {}".format(splitae_config))
+            return ('FLAG_ERROR', True)
+
+        ## Create output directory
+        if type(config["out_data"]) == type(None):
+            out_dir = "."
+        else:
+            out_dir = str(config["out_data"])
+
+        ## Create network directory
+        net_dir = "{}/{}".format(out_dir, str(config["net_id"]))
+        if not os.path.exists(net_dir): os.mkdir(net_dir)
+        # copy dictionary to the network directory
+        os.system("cp {} {}".format(splitae_config, net_dir))
+
+        ## Load data set
+        data_training, list_batches_training, data_test, list_batches_test, \
+        pc_size, samples_training, \
+        samples_test = arch_training.data_loader(config)
+        ## Normalize the data set
+        # Training
+        data_training, normlimits = CAE2PC.data_set_norm(data_training,
+                                                         np.array([0.1, 0.9]))
+        # Test
+        data_test = CAE2PC.data_set_norm(data_test, np.array([0.1, 0.9]),
+                                         inp_lim=normlimits)[0]
+
+        ## Save files: Normalization limits and logs with shape names
+        # .npy format
+        np.save("{}/norm_inp_limits".format(net_dir), normlimits)
+        np.save("{}/log_files_training".format(net_dir), samples_training)
+        np.save("{}/log_files_test".format(net_dir), samples_test)
+        # Text (.dat) format
+        with open("{}/norm_inp_limits.dat".format(net_dir), 'w') as file:
+            file.write(str(normlimits) + "," + str(normlimits[1]) + "\n")
+            file.close()
+        with open("{}/log_files_training.dat".format(net_dir), 'w') as file:
+            for line in list(samples_training):
+                file.write(line[0] + "\n")
+            file.close()
+        with open("{}/log_files_test.dat".format(net_dir), 'w') as file:
+            for line in list(samples_test):
+                file.write(line + "\n")
+            file.close()
+
+        ## Load templates
+        pc_temp, ind_t, ind_c = arch_training.splitaetemp_loader(config, pc_size,
+                                                              normlimits)
+
+        ## Generate architecture
+        latent_layer = int(config["latent_layer"])
+        encoder_sizes = list(config["encoder_layers"])
+        encoder_sizes.append(latent_layer)
+        decoder_sizes = list(config["decoder_layers"])
+        decoder_sizes.append(pc_size)
+        # Classifier
+        content_class_sizes = config["class_layers"]
+
+
+        S_in, _, S_out, class_prob_s, class_label_c,class_prob_c = SplitAE.splitae(encoder_sizes, pc_size, latent_layer, decoder_sizes)
+
+        ## Path to autoecoder graph files
+        pathToGraph = "{}/pcvae".format(net_dir)
+
+        ## Training algorithm and losses
+        # Settings
+        l_rate = float(config["l_rate"])
+        alpha1 = float(config["alpha1"])
+        alpha2 = float(config["alpha2"])
+        dpout = float(config["dpout"])
+        max_epochs = int(config["epochs_max"])
+        autosave_rate = float(config["autosave_rate"])
+        crit_stop = float(config["stop_training"])
+        # Optimizer and losses
+        optimizer = tf.train.AdamOptimizer(l_rate)
+        rec_loss = tf.math.scalar_mul(alpha1, losses.msd_gpu(S_in, S_out))
+        loss_comb = losses.msd_comb(S_in, S_out, pc_temp, ind_t, class_prob_s, class_label_c,class_prob_c)
+
+        loss_function = rec_loss + loss_comb
+        method = optimizer.minimize(loss_function)
+
+        ## Initialize variables
+        init = tf.global_variables_initializer()
+        saver = tf.train.Saver()
+
+        ## Initialize session
+        with tf.Session() as sess:
+            # Initialize parameters
+            sess.run(init)
+
+            ## Iteration over epochs
+            # Initial time
+            t = time.time()
+            # List for logging training losses
+            loss_values = []
+            # List for logging training losses
+            test_loss = []
+            # Epochs
+            for epochs in range(max_epochs):
+                # temporary list for log
+                loss_temp = []
+                # Iteration over training batches
+                for b in range(len(list_batches_training)):
+                    # Train 1 epoch over batch
+                    _, loss_val = sess.run([method, loss_function],
+                                           feed_dict={S_in:
+                                                          data_training
+                                                          [list_batches_training[b], :, :]})
+                    # Log loss value
+                    loss_temp.append(loss_val)
+                # Log mean and std over batches
+                loss_values.append([np.mean(loss_temp), np.std(loss_temp)])
+
+                # Iteration over test batches
+                test_loss_temp = []
+                for b in range(len(list_batches_test)):
+                    # Test over one batch
+                    test_val = sess.run(loss_function,
+                                        feed_dict={S_in:
+                                                       data_test
+                                                       [list_batches_test[b], :, :]})
+                    # Log loss for a batch
+                    test_loss_temp.append(test_val)
+                # Log mean and std over batches
+                test_loss.append([np.mean(test_loss_temp),
+                                  np.std(test_loss_temp)])
+
+                # Generate logs, ploting and saving graph
+                if (epochs + 1) % autosave_rate == 0 and epochs > 0:
+                    # Elapsed time
+                    etime = time.time() - t
+                    timeh = np.floor(etime / 3600)
+                    timemin = np.floor((etime / 60 - timeh * 60))
+                    timesec = (etime - timeh * 3600 - timemin * 60)
+                    # Remaining time
+                    rtime = (max_epochs - epochs) * (etime / epochs)
+                    rtimeh = np.floor(rtime / 3600)
+                    rtimemin = np.floor((rtime / 60 - rtimeh * 60))
+                    rtimesec = (rtime - rtimeh * 3600 - rtimemin * 60)
+
+                    # Print current and estimate runtime on screen
+                    print(str.format("EPOCH: {}", epochs + 1))
+                    print("ELAPSED TIME:", str.format("{:.0f}", timeh), \
+                          "h", str.format("{:.0f}", timemin), "min", \
+                          str.format("{:.0f}", timesec), "s")
+                    print("REMAINING TIME:", str.format("{:.0f}", rtimeh), \
+                          "h", str.format("{:.0f}", rtimemin), "min", \
+                          str.format("{:.0f}", rtimesec), "s")
+
+                    # Report losses
+                    print(
+                        str.format("\t- Training :: Losses = {:.3E} +/- {:.3E}",
+                                   np.mean(loss_temp), np.std(loss_temp)))
+                    print(str.format("\t- Test :: Losses = {:.3E} +/- {:.3E}",
+                                     np.mean(test_loss_temp), np.std(test_loss_temp)))
+                    # Save log: losses
+                    pd.DataFrame(loss_values).to_csv(
+                        str.format("{}/losses_training.csv", net_dir),
+                        header=None, index=None)
+                    pd.DataFrame(test_loss).to_csv(
+                        str.format("{}/losses_test.csv", net_dir),
+                        header=None, index=None)
+
+                    # Save Graph
+                    saver.save(sess, pathToGraph)
+
+                # Finish training
+                if test_loss[-1][0] <= crit_stop:
+                    print("Stop criteria achieved!")
+                    print("Test CD: {:.3E}, crit.: {:.3E}". \
+                          format(test_loss[-1][0], crit_stop))
+                    break
+
+            # Finish training
+            # Elapsed time
+            etime = time.time() - t
+            timeh = np.floor(etime / 3600)
+            timemin = np.floor((etime / 60 - timeh * 60))
+            timesec = (etime - timeh * 3600 - timemin * 60)
+            # Remaining time
+            rtime = (max_epochs - epochs) * (etime / epochs)
+            rtimeh = np.floor(rtime / 3600)
+            rtimemin = np.floor((rtime / 60 - rtimeh * 60))
+            rtimesec = (rtime - rtimeh * 3600 - rtimemin * 60)
+
+            print(str.format("EPOCH: {}", epochs + 1))
+            print("ELAPSED TIME:", str.format("{:.0f}", timeh), \
+                  "h", str.format("{:.0f}", timemin), "min", \
+                  str.format("{:.0f}", timesec), "s")
+
+            # Report losses
+            print(
+                str.format("\t- Training :: Losses = {:.3E} +/- {:.3E}",
+                           np.mean(loss_temp), np.std(loss_temp)))
+            print(str.format("\t- Test :: Losses = {:.3E} +/- {:.3E}",
+                             np.mean(test_loss_temp), np.std(test_loss_temp)))
+            # Save log: losses
+            pd.DataFrame(loss_values).to_csv(
+                str.format("{}/losses_training.csv", net_dir),
+                header=None, index=None)
+            pd.DataFrame(test_loss).to_csv(
+                str.format("{}/losses_test.csv", net_dir),
+                header=None, index=None)
+
+            # Save Graph
+            saver.save(sess, pathToGraph)
+            sess.close()
+
+        # Exit message
+        print("Training concluded")
+
+        # Save log file with elapsed and current time on network directory
+        os.system(
+            "echo ELAPSED TIME: {:.0f} h {:.0f} min {:.0f} s >> {}/net_DONE".format(timeh, timemin, timesec, net_dir))
+        current_time = time.strftime("%H:%M:%S", time.localtime())
+        os.system("echo CURRENT TIME: {} >> {}/net_DONE".format(current_time,
+                                                                net_dir))
+
+        # Return error message
+        return ('FLAG_ERROR', False)
+
+
     # Reconstruction losses
     def reconstruction_losses(config_path, GPUid=-1):
         '''Function to calculate the reconstruction losses (Chamfer Distance)
@@ -2729,6 +3018,7 @@ class arch_training:
         ## Load the architecture
         flag_vae = False
         flag_p2ffd = False
+
         # In case the network is PC-AE
         try:
             # - Import Graph at latest state (after training)
@@ -2739,6 +3029,7 @@ class arch_training:
                                                    clear_devices=True)
         # In case the network is PC-VAE
         except:
+
             try:
                 # - Import Graph at latest state (after training)
                 TFmetaFile = str.format("{}/pcvae.meta", net_dir)
@@ -2755,6 +3046,15 @@ class arch_training:
                 new_saver = tf.train.import_meta_graph(TFmetaFile,
                                                        clear_devices=True)
                 flag_p2ffd = True
+
+                try:
+                    # - Import Graph at latest state (after training)
+                    TFmetaFile = str.format("{}/splitae.meta", net_dir)
+                    TFDirectory = str.format("{}/", net_dir)
+                    # import graph data
+                    new_saver = tf.train.import_meta_graph(TFmetaFile,
+                                                           clear_devices=True)
+                    flag_splitae = True
 
 
         ## Create directory to save the files
@@ -2798,6 +3098,7 @@ class arch_training:
                     if flag_p2ffd:
                         lr, xrec = sess.run([Z, S_out], feed_dict={x: xin,
                                                                    gamma_n:0})
+
                     else:
                         lr, xrec = sess.run([Z, S_out], feed_dict={x: xin})
                 
@@ -2822,3 +3123,490 @@ class arch_training:
         
         # End of the function
         return()
+
+
+# SplitAE
+class SplitAE:
+    # SplitAE encoder parameters
+    def splitae_encoder_params(encoder_sizes, pc_size):
+        ''' Initial values of Split-AE parameters
+
+        Input:
+          - encoder_sizes: Array with the number of features for each
+          convolution layer. Type <array (-1)>
+          - pc_size: Number of points in the point clouds. Type: int
+
+        Output:
+          - S_in: Input placeholder. Type <tensor (-1,pc_size,3)>
+          - enc_w: Dictionary with tensors (filters) for the convolution layers.
+          Type: <dictionary[enc_w_layer_{},...,enc_w_layer_{}]>
+          - enc_b: Dictionary with the bias tensors for the convolution layers.
+          Type: <dictionary[enc_b_layer_{},...,enc_b_layer_{}]>
+
+        '''
+        ## Input point cloud, placeholder
+        S_in = tf.placeholder(tf.float32, (None, pc_size, 3), name="x1")
+
+        ## Assign convolutional layers
+        enc_w = {}
+        enc_b = {}
+        for i in range(len(encoder_sizes)):
+            # First layer: dependent on the size of the point clouds and fixed
+            # number of features (3)
+            if i == 0:
+                # Convolution weights
+                enc_w[str(i)] = tf.Variable( \
+                    tf.random_normal( \
+                        [1, 3, encoder_sizes[i]], mean=0.0, stddev=0.1, \
+                        dtype=tf.float32, seed=0), name=str.format( \
+                        "w_conv_layer_{}", i))
+                # Bias
+                enc_b[str(i)] = tf.Variable( \
+                    tf.random_normal( \
+                        [encoder_sizes[i]], \
+                        mean=0.0, stddev=0.1, dtype=tf.float32, seed=0), \
+                    name=str.format("b_conv_layer_{}", i))
+            # Further layers
+            else:
+                # Convolution weights
+                enc_w[str(i)] = tf.Variable( \
+                    tf.random_normal( \
+                        [1, encoder_sizes[i - 1], encoder_sizes[i]], \
+                        mean=0.0, stddev=0.1, \
+                        dtype=tf.float32, seed=0), name=str.format( \
+                        "w_conv_layer_{}", i))
+                # Bias
+                enc_b[str(i)] = tf.Variable( \
+                    tf.random_normal( \
+                        [encoder_sizes[i]], \
+                        mean=0.0, stddev=0.1, dtype=tf.float32, seed=0), \
+                    name=str.format("b_conv_layer_{}", i))
+
+        return (S_in, enc_w, enc_b)
+
+
+
+    # Point2FFD Encoder graph
+    def splitae_encoder(S_in, enc_w, enc_b, latent_layer):
+        ''' Graph of the Split-AE encoder
+
+        Input:
+          - S_in: input placeholder of the PC-AE, type: tensor, (-1,pc_size,3)
+          - enc_w: Dictionary with tensors (filters) for the convolution layers.
+          Type: <dictionary[enc_w_layer_{},...,enc_w_layer_{}]>
+          - enc_b: Dictionary with the bias tensors for the convolution layers.
+          Type: <dictionary[enc_b_layer_{},...,enc_b_layer_{}]>
+          - latent_layer: number of latent variables. Type: int
+          - gamma_n: Placeholder for the parameter "gamma" that enables
+          the noise in the latent layer. Type <tensor ()>
+          - sigma_n: standard deviation for generating the Gaussian noise.
+          Type: <float, ()>
+
+        Output:
+          - Z: Tensor with the latent representation.
+          Type <tensor (-1, latent_layer, 1)>
+        '''
+
+        # Initialize empty dictionaries for assigning the layers
+        conv_op = {}
+        actv_conv_op = {}
+        # Assign initial (n-1) convolution layers
+        for i in range(len(enc_w) - 1):
+            # First layer, dependent on the dimensionality of the input
+            # point clouds
+            if i == 0:
+                conv_op[str(i)] = tf.nn.conv1d( \
+                    S_in, enc_w[str(i)], stride=(1), padding="SAME") \
+                                  + enc_b[str(i)]
+                actv_conv_op[str(0)] = tf.nn.relu(conv_op[str(i)], name="CLayer__0")
+                # math.tan(conv_op[str(i)], name="CLayer_0")
+                # nn.relu(conv_op[str(i)], name="CLayer_0")
+            # Further intermediate layers
+            else:
+                conv_op[str(i)] = tf.nn.conv1d( \
+                    actv_conv_op[str(i - 1)], enc_w[str(i)], \
+                    stride=(1), padding="SAME") \
+                                  + enc_b[str(i)]
+                actv_conv_op[str(i)] = tf.nn.relu(conv_op[str(i)], \
+                                                  name=str.format("CLayer_{}", i))
+
+        # Last convolution layer
+        i = len(enc_w) - 1
+        conv_op[i] = tf.nn.conv1d( \
+            actv_conv_op[str(i - 1)], enc_w[str(i)], \
+            stride=(1), padding="SAME") + enc_b[str(i)]
+        # intop = tf.nn.sigmoid(conv_op[i])*0.9*tf.constant(np.pi) - 0.9*tf.constant(0.5*np.pi)
+        # actv_conv_op[str(i)] = tf.math.tanh(intop, \
+        #     name=str.format("CLayer_{}", i))
+        actv_conv_op[str(i)] = tf.math.tanh(conv_op[i], \
+                                            name=str.format("CLayer_{}", i))
+
+        # Max pooling operation
+        max_pool = tf.reduce_max(actv_conv_op[str(i)], axis=1)
+
+        # Extracting the latent representations
+        latent_rep = tf.reshape(max_pool, shape=(-1, latent_layer, 1), \
+                                name="latent_rep")
+        return latent_rep
+
+
+
+
+    # Content Classifier parameters
+    def splitae_content_classifier_params(latent_layer, mlp_layers):
+        ''' Initial values of the content classifier parameters
+
+        Input:
+          - latent_layer: number of latent variables. Type: int
+          - mlp_layers: number of hidden layers of the mlp classifier. Type <array (-1)>
+
+        Output:
+          - class_w: Dictionary with the layers' weights.
+          Type: <dictionary[class_w_layer_{},...,class_w_layer_{}]>
+          - class_b: Dictionary with the layers' bias.
+          Type: <dictionary[class_b_layer_{},...,class_b_layer_{}]>
+        '''
+        class_w = {}
+        class_b = {}
+        ## MLP Layers
+        # First layer
+        class_w[str(0)] = tf.Variable(tf.random_normal( \
+            [latent_layer, mlp_layers[0]], \
+            mean=0.0, stddev=0.1, dtype=tf.float32, seed=0), \
+            name=str.format("w_mlp_class_{}", 0))
+        class_b[str(0)] = tf.Variable(tf.random_normal( \
+            [mlp_layers[0]], \
+            mean=0.0, stddev=0.1, dtype=tf.float32, seed=0), \
+            name=str.format("b_mlp_class_{}", 0))
+
+        # Additional layers
+        for i in range(1, len(mlp_layers)):
+            class_w[str(i)] = tf.Variable(tf.random_normal( \
+                [mlp_layers[i - 1], mlp_layers[i]], \
+                mean=0.0, stddev=0.1, dtype=tf.float32, seed=0), \
+                name=str.format("w_mlp_class_{}", i))
+            class_b[str(i)] = tf.Variable(tf.random_normal( \
+                [mlp_layers[i]], \
+                mean=0.0, stddev=0.1, dtype=tf.float32, seed=0), \
+                name=str.format("b_mlp_class_{}", i))
+
+        return (class_w, class_b)
+
+    # Shape classifier graph
+    def splitae_content_classifier(Z, class_w, class_b):
+        ''' Graph of the Split-AE Classifier
+        Inputs:
+          - Z: Tensor with the latent representation.
+          Type <tensor (-1, latent_layer, 1)>
+          - class_w: Dictionary with the layers' weights.
+          Type: <dictionary[class_w_layer_{},...,class_w_layer_{}]>
+          - class_b: Dictionary with the layers' bias.
+          Type: <dictionary[class_b_layer_{},...,class_b_layer_{}]>
+
+        Outputs:
+          - class_labl: Tensor with the class label.
+          Type <tensor ()>
+          - class_prob: Tensor with the selection probabilities.
+          Type <tensor (-1, latent_layer)>
+        '''
+        # Adapt code for nfeat Dimensions
+
+
+
+        latent_rep = tf.reshape(Z, shape=(-1, Z.shape[1]))
+        # Calculate the number of layer
+        n_layers = int(len(class_w.keys()))
+
+        layer_res = {}
+        for i in range(n_layers):
+            if i == 0:
+                layer_res[str(i)] = \
+                    tf.nn.relu( \
+                        tf.add( \
+                            tf.matmul(latent_rep, class_w[str(i)]),
+                            class_b[str(i)]),
+                        name=str.format("mlpclass_{}", i))
+            else:
+                layer_res[str(i)] = \
+                    tf.nn.relu( \
+                        tf.add( \
+                            tf.matmul(layer_res[str(i - 1)], \
+                                      class_w[str(i)]),
+                            class_b[str(i)]),
+                        name=str.format("mlpclass_{}", i))
+        # Last layer
+        layer_res[str(n_layers - 1)] = \
+            tf.nn.sigmoid(tf.add(tf.matmul(layer_res[str(n_layers - 2)], \
+                                           class_w[str(n_layers - 1)]),
+                                 class_b[str(n_layers - 1)],
+                                 name=str.format("mlpclass_{}", n_layers - 1)))
+
+
+        class_label = tf.math.argmax(layer_res[str(n_layers - 1)], axis=1, output_type=tf.dtypes.int32, name="class_label")
+        class_prob = tf.nn.softmax(layer_res[str(n_layers - 1)], name="class_prob")
+
+        # Output
+        return (class_label, class_prob)
+
+    # Style Classifier parameters
+    def splitae_style_classifier_params(latent_layer, mlp_layers):
+        ''' Initial values of the style classifier parameters
+
+        Input:
+          - latent_layer: number of latent variables. Type: int
+          - mlp_layers: number of hidden layers of the mlp classifier. Type: int
+        Output:
+          - class_w: Dictionary with the layers' weights.
+          Type: <dictionary[class_w_layer_{},...,class_w_layer_{}]>
+          - class_b: Dictionary with the layers' bias.
+          Type: <dictionary[class_b_layer_{},...,class_b_layer_{}]>
+        '''
+        class_w = {}
+        class_b = {}
+        ## MLP Layers
+        # First layer
+        class_w[str(0)] = tf.Variable(tf.random_normal( \
+            [latent_layer, mlp_layers[0]], \
+            mean=0.0, stddev=0.1, dtype=tf.float32, seed=0), \
+            name=str.format("w_mlp_class_{}", 0))
+        class_b[str(0)] = tf.Variable(tf.random_normal( \
+            [mlp_layers[0]], \
+            mean=0.0, stddev=0.1, dtype=tf.float32, seed=0), \
+            name=str.format("b_mlp_class_{}", 0))
+
+        # Additional layers
+        for i in range(1, len(mlp_layers)):
+            class_w[str(i)] = tf.Variable(tf.random_normal( \
+                [mlp_layers[i - 1], mlp_layers[i]], \
+                mean=0.0, stddev=0.1, dtype=tf.float32, seed=0), \
+                name=str.format("w_mlp_class_{}", i))
+            class_b[str(i)] = tf.Variable(tf.random_normal( \
+                [mlp_layers[i]], \
+                mean=0.0, stddev=0.1, dtype=tf.float32, seed=0), \
+                name=str.format("b_mlp_class_{}", i))
+
+        return (class_w, class_b)
+
+    # Style classifier graph
+    def splitae_style_classifier(Z, class_w, class_b):
+        ''' Graph of the Split-AE style Classifier
+        Inputs:
+          - Z: Tensor with the latent representation.
+          Type <tensor (-1, latent_layer, 1)>
+          - class_w: Dictionary with the layers' weights.
+          Type: <dictionary[class_w_layer_{},...,class_w_layer_{}]>
+          - class_b: Dictionary with the layers' bias.
+          Type: <dictionary[class_b_layer_{},...,class_b_layer_{}]>
+
+        Outputs:
+          - class_labl: Tensor with the class label.
+          Type <tensor ()>
+          - class_prob: Tensor with the selection probabilities.
+          Type <tensor (-1, latent_layer)>
+        '''
+        # Adapt code for nfeat Dimensions
+
+        latent_rep = tf.reshape(Z, shape=(-1, Z.shape[1]))
+        # Calculate the number of layer
+        n_layers = int(len(class_w.keys()))
+
+        layer_res = {}
+        for i in range(n_layers):
+            if i == 0:
+                layer_res[str(i)] = \
+                    tf.nn.relu( \
+                        tf.add( \
+                            tf.matmul(latent_rep, class_w[str(i)]),
+                            class_b[str(i)]),
+                        name=str.format("mlpclass_{}", i))
+            else:
+                layer_res[str(i)] = \
+                    tf.nn.relu( \
+                        tf.add( \
+                            tf.matmul(layer_res[str(i - 1)], \
+                                      class_w[str(i)]),
+                            class_b[str(i)]),
+                        name=str.format("mlpclass_{}", i))
+        # Last layer
+        layer_res[str(n_layers - 1)] = \
+            tf.nn.sigmoid(tf.add(tf.matmul(layer_res[str(n_layers - 2)], \
+                                           class_w[str(n_layers - 1)]),
+                                 class_b[str(n_layers - 1)],
+                                 name=str.format("mlpclass_{}", n_layers - 1)))
+
+        class_label = tf.math.argmax(layer_res[str(n_layers - 1)], axis=1, output_type=tf.dtypes.int32,
+                                     name="class_label")
+        class_prob = tf.nn.softmax(layer_res[str(n_layers - 1)], name="class_prob")
+
+        # Output
+        return (class_label, class_prob)
+
+    # Decoder
+    def splitae_decoder_params(latent_layer, decoder_sizes):
+        ''' Parameters of the Split-AE decoder
+
+        Input:
+          - latent_layer: Number of latent variables. Type: int
+          - decoder_sizes: Array with the number of hidden neurons
+          for each fully connected layer. Type: <array (-1)>
+
+        Output:
+          - dec_w: Dictionary with the weights of the decoder layers.
+          Type: <dictionary[dec_w_layer_0,...,dec_w_layer_{}]>
+          - dec_b: Dictionary with the biases of the decoder layers.
+          Type: <dictionary[dec_b_layer_0,...,dec_b_layer_{}]>
+        '''
+        dec_w = {}
+        dec_b = {}
+        ## Decoder: Fully Connected Layers
+        # First fully connected layer
+        dec_w[0] = tf.Variable(tf.random_normal(
+            [decoder_sizes[0],
+             latent_layer], mean=0.0, stddev=0.01, dtype=tf.float32, seed=0),
+            name=str.format("dec_w_layer_{}", 0))
+        dec_b[0] = tf.Variable(tf.random_normal(
+            [decoder_sizes[0], 3],
+            mean=0.0, stddev=0.01,
+            dtype=tf.float32, seed=0),
+            name=str.format("dec_b_layer_{}", 0))
+        # Further layers
+        for i in range(1, len(decoder_sizes)):
+            dec_w[i] = tf.Variable(tf.random_normal(
+                [decoder_sizes[i],
+                 decoder_sizes[i - 1]],
+                mean=0.0, stddev=0.01,
+                dtype=tf.float32, seed=0),
+                name=str.format("dec_w_layer_{}", i))
+            dec_b[i] = tf.Variable(tf.random_normal(
+                [decoder_sizes[i], 3],
+                mean=0.0, stddev=0.01,
+                dtype=tf.float32, seed=0),
+                name=str.format("dec_b_layer_{}", i))
+        # Output
+        return (dec_w, dec_b)
+
+    # Split-AE Decoder
+    def splitae_decoder(Z, decoder_sizes, dec_w, dec_b):
+        ''' Graph of the Split-AE decoder
+
+        Input:
+          - Z: tensor with the latent representations corresponding to
+          the input S_in. type: <tensor (-1, latent_layer, 1)>
+          - decoder_sizes: array with the number of hidden neurons for
+          each fully connected layer. Type: <array (-1)>
+          - dec_w: Dictionary with the weights of the decoder layers.
+          Type: <dictionary[dec_w_layer_0,...,dec_w_layer_{}]>
+          - dec_b: Dictionary with the biases of the decoder layers.
+          Type: <dictionary[dec_b_layer_0,...,dec_b_layer_{}]>
+
+        Output:
+          - V_def: Lattice deformations.
+          Type <tensor (-1, pc_size, 3)>
+        '''
+
+        dec_layers = {}
+        # Adapt code for 3 Dimensions
+        Z_concat = tf.concat((Z, Z, Z), 2)
+
+        # Fully Connected Layers
+        for i in range(len(decoder_sizes) - 1):
+            # First layer after the latent representation
+            if i == 0:
+                dec_layers[i] = tf.nn.relu(
+                    tf.scan(
+                        lambda a, z: tf.add(
+                            tf.matmul(dec_w[i],
+                                      z),
+                            dec_b[i]),
+                        Z_concat,
+                        initializer=tf.zeros(
+                            (decoder_sizes[i],
+                             3))
+                    ),
+                    name=str.format("declayer_{}", 0))
+
+            # Intermediate layers, before the output
+            else:
+                dec_layers[i] = tf.nn.relu(
+                    tf.scan(
+                        lambda a, z: tf.add(
+                            tf.matmul(dec_w[i], z),
+                            dec_b[i]),
+                        dec_layers[i - 1],
+                        initializer=tf.zeros(
+                            (decoder_sizes[i],
+                             3))
+                    ),
+                    name=str.format("declayer_{}", i))
+
+        # Last layer, with the same shape as the input tensor x
+        i = len(decoder_sizes) - 1
+        dec_layers[i] = tf.nn.sigmoid(
+            tf.scan(
+                lambda a, z: tf.add(
+                    tf.matmul(dec_w[i], z),
+                    dec_b[i]),
+                dec_layers[i - 1],
+                initializer=tf.zeros(
+                    (decoder_sizes[i], 3)))
+        )
+
+        # Output tensor: Displacement of the control points
+        V_def = tf.reshape(dec_layers[i],
+                           shape=(-1, decoder_sizes[i], 3), name="V_def")
+        return (V_def)
+
+
+    # Split-AE Architecture
+    def splitae(encoder_sizes, pc_size, latent_layer, decoder_sizes):
+        ''' Builds the graph of the complete Split-AE architecture
+
+        Input:
+          - encoder_sizes: Array with the number of features for each
+          convolution layer. Type <array (-1)>
+          - pc_size: Number of points in the point clouds. Type: int
+          - latent_layer: Number of latent variables. Type: int
+          - decoder_sizes: array with the number of hidden neurons for
+          each fully connected layer. Type: <array (-1)>
+
+
+        Output:
+          - S_in: Input placeholder of the PC-AE, type: tensor, (-1,pc_size,3)
+          - Z: Tensor with the latent representation.
+          Type <tensor (-1, latent_layer, 1)>
+          - S_out: Reconstructed  point cloud. Type <tensor (-1, pc_size, 3)>
+          - class_labl:
+          - class_prob:
+        '''
+        # Encoder
+        S_in, c_enc_w, c_enc_b = SplitAE. \
+            splitae_encoder_params(encoder_sizes, pc_size)
+        Z_content = SplitAE.splitae_encoder(S_in, c_enc_w, c_enc_b, latent_layer)
+
+        S_in, s_enc_w, s_enc_b = SplitAE. \
+            splitae_encoder_params(encoder_sizes, pc_size)
+        Z_style = SplitAE.splitae_encoder(S_in, s_enc_w, s_enc_b, latent_layer)
+
+
+        #Content Classifier
+        mlp_layers_content = [25, 2]
+        mlp_c_w, mlp_c_b = SplitAE. \
+            splitae_content_classifier(latent_layer, mlp_layers_content)
+        class_label_c, class_prob_c = SplitAE.splitae_content_classifier(Z_content, mlp_c_w, mlp_c_b)
+
+        # Style Classifier
+        mlp_layers_style = [25, 5]
+        mlp_s_w, mlp_s_b = SplitAE. \
+            splitae_content_classifier(latent_layer, mlp_layers_style)
+        class_prob_s = SplitAE.splitae_style_classifier(Z_style, mlp_s_w, mlp_s_b)
+
+        Z = tf.concat([Z_content, Z_style], axis=1, name='latent_rep_full')
+
+        # Decoder
+        dec_w, dec_b = SplitAE.splitae_decoder_params(latent_layer,
+                                                      decoder_sizes)
+
+        S_out = SplitAE.splitae_decoder(Z, decoder_sizes, dec_w, dec_b)
+
+
+        return (S_in, Z, S_out, class_prob_s, class_label_c, class_prob_c)
