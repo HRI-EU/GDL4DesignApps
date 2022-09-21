@@ -58,7 +58,9 @@ The core methods of our software are implemented in the [`preprocess_methods.py`
 
 + [PC_VAE](gdl4designapps/preprocess_methods.py#L848): This class contains the functions to generate the parameters and corresponding Tensorflow graph for training the 3D point cloud variational autoencoder utilized in our research.
 
-+ **New!** [Point2FFD](gdl4designapps/preprocess_methods.py#L1199): This class contains the functions to generate the parameters and corresponding Tensorflow graph for training Point2FFD, an architecture that generates polygonal meshes from input 3D point cloud representations.
++ [Point2FFD](gdl4designapps/preprocess_methods.py#L1199): This class contains the functions to generate the parameters and corresponding Tensorflow graph for training Point2FFD, an architecture that generates polygonal meshes from input 3D point cloud representations.
+
++ **New!** [Split-AE](gdl4designapps/preprocess_methods.py#L1199): This class contains the functions to generate the parameters and corresponding Tensorflow graph for training Split-AE, an architecture that generates content and style features of the input 3D point cloud representations for style transfer.
 
 + [losses](gdl4designapps/preprocess_methods.py#L1629): Class that comprises the functions to calculate the mean-squared distance (MSD) and Kullback-Leibler divergence (KLD) on GPU for training the architectures. The Chamfer Distance (CD) is also available, however only for computation on CPU.
 
