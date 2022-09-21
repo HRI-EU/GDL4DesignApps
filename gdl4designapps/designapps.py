@@ -229,6 +229,101 @@ class Vis3D:
 # DESIGN APPLICATIONS
 # ------------------------------------------------------------------------------
 
+# Free-form deformation algorithm
+# Standard free-form deformation (FFD) algorithm
+class FFD:
+    # FFD lattice
+    def FFD_lattice(S,limits,L,M,N):
+        '''Function to generate the representation of the control lattice and
+        normalized point cloud representation
+        Input:
+          - S: 3D point cloud representation. Type <array, (N,3)>
+          - limits: array with the bounding values of the x, y and z 
+          coordinates -> [[x_min,x_max],[y_min,y_max],[z_min,z_max]].
+          Type: <array, (3,2)>
+          - L: Number of control planes in the s direction. Type: <int>
+          - M: Number of control planes in the t direction. Type: <int>
+          - N: Number of control planes in the u direction. Type: <int>
+        Output:
+          - Sn: 3D point cloud normalized to [0,1], [0,1], [0,1]. Type
+          <array, (N,3)>
+          - V: Coordinates of the control points. Type <array, (Nv,3)>
+        '''
+        # Axes seed
+        x_seed = np.linspace(np.min(limits[0,:]), np.max(limits[0,:]), L)
+        y_seed = np.linspace(np.min(limits[1,:]), np.max(limits[1,:]), M)
+        z_seed = np.linspace(np.min(limits[2,:]), np.max(limits[2,:]), N)
+
+        # Generate lattice
+        V = np.zeros((L*M*N, 3))
+        cntrV = 0
+        for i in range(L):
+            for j in range(M):
+                for k in range(N):
+                    V[cntrV, :] = np.array([x_seed[i], y_seed[j], z_seed[k]])
+                    cntrV+=1
+
+        # Embedd point cloud
+        Sn = np.zeros(S.shape)
+        for i in range(3):
+            Sn[:,i] = (S[:,i]-np.min(V[:,i]))/(np.max(V[:,i])-np.min(V[:,i]))
+        
+        return(Sn, V)
+    
+    # Free-form deformation: Bernstein coefficients
+    def BernsteinPoly(L,M,N,Sn):
+        '''Function to generate the matrix with the coefficients
+        of the Bernstein tri-variate polynomial
+        Input:
+          - L: Number of control planes in the s direction. Type: <int>
+          - M: Number of control planes in the t direction. Type: <int>
+          - N: Number of control planes in the u direction. Type: <int>
+          - Sn: Normalized coordinates of the 3D point cloud 
+          representation. Type: <array, (N,3)>
+        Output:
+          - B_marix: matrix with the coefficients of the tri-variate Bernstein
+          polynomial. Type <array, (N, Nv)>
+        '''
+        # Normalized point cloud
+        s = Sn[:,0]
+        t = Sn[:,1]
+        u = Sn[:,2]
+    
+        # Bernstein matrix
+        shpBern = np.max([L, M, N])
+        Mbernstein = np.matrix(np.zeros([shpBern, shpBern]))
+        Mbernstein[0,0] = 1
+        for i in range(1, Mbernstein.shape[0]):
+            for j in range(Mbernstein.shape[1]):
+                if j == 1: Mbernstein[i,j] = 1
+                Mbernstein[i,j] = Mbernstein[i-1, j-1] + Mbernstein[i-1, j]
+    
+        # Polynomial coefficients
+        B_matrix = np.zeros((s.shape[0], L*M*N))
+        cnt = 0
+        for i in range (L):
+            s_term = Mbernstein[L-1,i]*(1-s)**(L-1-i)*s**i
+            for j in range(M):
+                t_term = Mbernstein[M-1,j]*(1-t)**(M-1-j)*t**j
+                for k in range(N):
+                    B_matrix[:, cnt] = s_term*t_term*(Mbernstein[N-1,k]*(1-u)**(N-1-k)*u**k)
+                    cnt += 1
+        return(B_matrix)
+
+    # FFD operator
+    def FFD_op(V, B):
+        ''' Deformation of a 3D shape using FFD
+        
+        Input:
+          - V: Matrix of control points. Type <array, (Nv,3)>
+          - B: Coefficients of the tri-variate Bernstein polynomial.
+          Type <array, (N, Nv)>
+        Output:
+          - S_out: Deformed 3D point cloud. Type <array, (N,3)>
+        '''
+        S_out = np.matmul(B,V)
+        return(S_out)
+       
 # Algorithms for generating latent representations, 3D point clouds and 
 # visualizing network features
 class DesignApps:
