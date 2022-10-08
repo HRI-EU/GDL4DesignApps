@@ -2287,6 +2287,8 @@ class arch_training:
         latent_layer = int(config["latent_layer"])
         encoder_sizes = list(config["encoder_layers"])
         encoder_sizes.append(latent_layer)
+        encoder_sizes.append(latent_layer)
+        encoder_sizes.append(latent_layer)
         decoder_sizes = list(config["decoder_layers"])
         decoder_sizes.append(pc_size)
         S_in, _,S_out,mu,sgm,kdout, = PC_VAE.pcvae(encoder_sizes, 
