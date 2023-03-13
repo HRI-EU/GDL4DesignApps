@@ -715,4 +715,12 @@ class DesignApps:
                 else:
                     f_batch[i,:,:] = sess.run(feat_layer, 
                                               feed_dict={S_in: xin})[0,:,:]
+            # Plot designs
+            if plot:
+                for j in range(f_batch.shape[2]):
+                    fname = "{}/Shape_{:03}_Feat_{:03}".format(output_test, i,j)
+                    Vis3D.pccmap(xin[0,:,:], f_batch[i,:,j], fname, 
+                    pointsize=20, vlim=[-1,1],
+                    cam_az=0, cam_el=0, wsize=(3440, 1440))      
+             
         return(f_batch)
