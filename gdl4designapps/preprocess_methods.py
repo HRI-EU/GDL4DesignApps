@@ -3059,6 +3059,8 @@ class arch_training:
                     new_saver = tf.train.import_meta_graph(TFmetaFile,
                                                            clear_devices=True)
                     flag_splitae = True
+                except:
+                    pass
 
 
         ## Create directory to save the files
