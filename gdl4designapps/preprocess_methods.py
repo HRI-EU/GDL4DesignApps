@@ -907,32 +907,30 @@ class PC_VAE:
                                                      mean=0.0, stddev=0.01,
                                                      dtype=tf.float32, seed=0),
                                     name=str.format("enc_b_layer_{}", i))
-            # Mu layers
+            # Mu and sigma layers
             i = len(encoder_sizes)-1
             # Mu: Convolution weights
-            enc_w[i] = tf.Variable(
-                                tf.random_normal([1, encoder_sizes[i-1],
+            enc_w[i+1] = tf.Variable(
+                                tf.random_normal([1, encoder_sizes[i],
                                                   encoder_sizes[i]],
                                                  mean=0.0, stddev=0.01,
                                                  dtype=tf.float32, seed=0),
                                 name="enc_w_layer_mu")
             # Mu: Bias
-            enc_b[i] = tf.Variable(
+            enc_b[i+1] = tf.Variable(
                                 tf.random_normal([encoder_sizes[i]],
                                                  mean=0.0, stddev=0.01,
                                                  dtype=tf.float32, seed=0),
                                 name="enc_b_layer_mu")
-            # Sigma layer
-            i = len(encoder_sizes)-2
             # sigma: Convolution weights
-            enc_w[i] = tf.Variable(
-                                tf.random_normal([1, encoder_sizes[i-2],
+            enc_w[i+2] = tf.Variable(
+                                tf.random_normal([1, encoder_sizes[i],
                                                   encoder_sizes[i]],
                                                  mean=0.0, stddev=0.01,
                                                  dtype=tf.float32, seed=0),
                                 name="enc_w_layer_sigma")
             # sigma: Bias
-            enc_b[i] = tf.Variable(
+            enc_b[i+2] = tf.Variable(
                                 tf.random_normal([encoder_sizes[i]],
                                                  mean=0.0, stddev=0.01,
                                                  dtype=tf.float32, seed=0),
@@ -2288,8 +2286,6 @@ class arch_training:
         ## Generate architecture
         latent_layer = int(config["latent_layer"])
         encoder_sizes = list(config["encoder_layers"])
-        encoder_sizes.append(latent_layer)
-        encoder_sizes.append(latent_layer)
         encoder_sizes.append(latent_layer)
         decoder_sizes = list(config["decoder_layers"])
         decoder_sizes.append(pc_size)
